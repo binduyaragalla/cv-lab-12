@@ -1,0 +1,74 @@
+import cv2
+import numpy as np
+import matplotlib.pyplot as plt
+
+img1 = cv2.imread('images (1).jpg')
+img2 = cv2.imread('one-piece-wallpaper-thumb.jpg')
+# Convert to RGB for matplotlib display
+img1_rgb = cv2.cvtColor(img1, cv2.COLOR_BGR2RGB)
+img2_rgb = cv2.cvtColor(img2, cv2.COLOR_BGR2RGB)
+# Convert to Grayscale for feature detection
+gray1 = cv2.cvtColor(img1, cv2.COLOR_BGR2GRAY)
+gray2 = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
+# 2. Detect Features
+# Initialize ORB detector (Oriented FAST and Rotated BRIEF)
+orb = cv2.ORB_create(nfeatures=2000)
+# Find the keypoints and descriptors with ORB
+keypoints1, descriptors1 = orb.detectAndCompute(gray1, None)
+keypoints2, descriptors2 = orb.detectAndCompute(gray2, None)
+# 3. Match Features
+# Create BFMatcher (Brute Force Matcher) object with Hamming distance
+bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
+# Match descriptors
+matches = bf.match(descriptors1, descriptors2)
+# Sort them in the order of their distance (lower distance is better)
+matches = sorted(matches, key=lambda x: x.distance)
+# Keep only the top matches (e.g., best 15%) to reduce noise
+keep_percent = 0.15
+num_keep = int(len(matches) * keep_percent)
+best_matches = matches[:num_keep]
+# 4. Visualization of Matches (Before RANSAC)
+
+img_matches = cv2.drawMatches(img1_rgb, keypoints1, img2_rgb,
+keypoints2, best_matches, None,
+flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
+plt.figure(figsize=(15, 10))
+plt.imshow(img_matches)
+plt.title(f"Top {num_keep} Raw Matches (Before RANSAC)")
+plt.axis('off')
+plt.show()
+# 5. Extract Point Coordinates for RANSAC
+# Initialize lists
+points1 = np.zeros((len(best_matches), 2), dtype=np.float32)
+points2 = np.zeros((len(best_matches), 2), dtype=np.float32)
+# Extract locations of good matches
+for i, match in enumerate(best_matches):
+    points1[i, :] = keypoints1[match.queryIdx].pt # Points from image to be aligned
+    points2[i, :] = keypoints2[match.trainIdx].pt # Points from reference image
+# 6. Compute Homography Matrix using RANSAC
+# cv2.RANSAC finds the best homography matrix while ignoring outliers
+# RANSAC threshold = 5.0
+h_matrix, mask = cv2.findHomography(points1, points2, cv2.RANSAC, 5.0)
+# Check the number of inliers used
+matches_mask = mask.ravel().tolist()
+inliers_count = np.sum(matches_mask)
+print(f"Total Matches: {len(best_matches)}")
+print(f"Inliers found by RANSAC: {inliers_count}")
+# 7. Apply Homography (Warp Perspective)
+height, width, channels = img2.shape
+aligned_img = cv2.warpPerspective(img1, h_matrix, (width, height))
+
+# 8. Display Final Results
+plt.figure(figsize=(15, 10))
+# Plot Reference Image
+plt.subplot(1, 2, 1)
+plt.imshow(img2_rgb)
+plt.title("Reference Image (Target)")
+plt.axis('off')
+# Plot Aligned Image
+plt.subplot(1, 2, 2)
+plt.imshow(cv2.cvtColor(aligned_img, cv2.COLOR_BGR2RGB))
+plt.title("Aligned Image (Result)")
+plt.axis('off')
+plt.tight_layout()
+plt.show()
