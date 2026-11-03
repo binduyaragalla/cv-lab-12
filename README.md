@@ -193,6 +193,9 @@ The experiment produces the following results:
 <img width="1182" height="638" alt="cvlab-12-output" src="https://github.com/user-attachments/assets/a0e13daf-cda9-4701-8d1d-a4f4418bdda0" />
 
 
+<img width="1489" height="451" alt="cvlab-12-output-2" src="https://github.com/user-attachments/assets/fa488a78-ff9a-4521-a5df-84542f1f43fa" />
+
+
 ## 9. Result
 
 The RANSAC algorithm was successfully implemented using Python and OpenCV. ORB feature detection and Brute Force Matching were used to identify common features between two images. RANSAC estimated the Homography matrix by eliminating incorrect matches and helped align the input image with the reference image.
